@@ -1,6 +1,14 @@
+<<<<<<< Updated upstream
 local now_ms    = tonumber(ARGV[1])
 local num_rules = #KEYS / 2
 
+=======
+-- Get args from redis.eval()
+local now_ms      = tonumber(ARGV[1])
+local num_rules   = #KEYS / 2
+
+-- Init locals
+>>>>>>> Stashed changes
 local min_wait_ms = 0
 local computed    = {}
 
@@ -12,12 +20,21 @@ for i = 1, num_rules do
     local window_ms  = tonumber(ARGV[1 + (i - 1) * 2 + 2])
     local rate       = limit / window_ms
 
+<<<<<<< Updated upstream
     local tokens = tonumber(redis.call('GET', tok_key))
     if tokens == nil then tokens = limit end
 
     local last_refill = tonumber(redis.call('GET', refill_key))
     if last_refill == nil then last_refill = now_ms end
+=======
+    -- Set tokens to limit if key doesn't exist yet (as on first pass)
+    if tokens == nil then 
+        tokens      = limit
+        last_refill = now_ms 
+    end
+>>>>>>> Stashed changes
 
+    -- Determine how many tokens have regened since last fill
     local elapsed = now_ms - last_refill
     if elapsed > 0 then
         tokens = math.min(limit, tokens + elapsed * rate)
@@ -30,7 +47,8 @@ for i = 1, num_rules do
         window_ms  = window_ms,
         rate       = rate,
     }
-
+    
+    -- Determine how long it will take for all rules to have >= 1 token
     if tokens < 1 then
         local wait = math.ceil((1 - tokens) / rate)
         if wait > min_wait_ms then min_wait_ms = wait end
@@ -46,6 +64,7 @@ if min_wait_ms > 0 then
         redis.call('PEXPIRE', c.tok_key, c.window_ms + 5000)
         redis.call('PEXPIRE', c.refill_key, c.window_ms + 5000)
     end
+    -- Return wait-time for all rules to have >= 1 token
     return min_wait_ms
 end
 
@@ -57,4 +76,5 @@ for i = 1, num_rules do
     redis.call('PEXPIRE', c.refill_key, c.window_ms + 5000)
 end
 
+-- Return 0 as there is no need to wait for tokens
 return 0
