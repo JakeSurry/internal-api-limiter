@@ -1,38 +1,26 @@
-<<<<<<< Updated upstream
-local now_ms    = tonumber(ARGV[1])
-local num_rules = #KEYS / 2
-
-=======
 -- Get args from redis.eval()
 local now_ms      = tonumber(ARGV[1])
 local num_rules   = #KEYS / 2
 
 -- Init locals
->>>>>>> Stashed changes
 local min_wait_ms = 0
 local computed    = {}
 
 -- Read pass: find number of tokens remaining for all rules
 for i = 1, num_rules do
-    local tok_key    = KEYS[(i - 1) * 2 + 1]
-    local refill_key = KEYS[(i - 1) * 2 + 2]
-    local limit      = tonumber(ARGV[1 + (i - 1) * 2 + 1])
-    local window_ms  = tonumber(ARGV[1 + (i - 1) * 2 + 2])
-    local rate       = limit / window_ms
-
-<<<<<<< Updated upstream
-    local tokens = tonumber(redis.call('GET', tok_key))
-    if tokens == nil then tokens = limit end
-
+    local tok_key     = KEYS[(i - 1) * 2 + 1]
+    local refill_key  = KEYS[(i - 1) * 2 + 2]
+    local limit       = tonumber(ARGV[1 + (i - 1) * 2 + 1])
+    local window_ms   = tonumber(ARGV[1 + (i - 1) * 2 + 2])
+    local rate        = limit / window_ms
+    local tokens      = tonumber(redis.call('GET', tok_key))
     local last_refill = tonumber(redis.call('GET', refill_key))
-    if last_refill == nil then last_refill = now_ms end
-=======
+
     -- Set tokens to limit if key doesn't exist yet (as on first pass)
     if tokens == nil then 
         tokens      = limit
         last_refill = now_ms 
     end
->>>>>>> Stashed changes
 
     -- Determine how many tokens have regened since last fill
     local elapsed = now_ms - last_refill
