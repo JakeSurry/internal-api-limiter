@@ -7,11 +7,11 @@ local min_wait_ms = 0
 local computed    = {}
 
 -- Read pass: find number of tokens remaining for all rules
-for i = 1, num_rules do
-    local tok_key     = KEYS[(i - 1) * 2 + 1]
-    local refill_key  = KEYS[(i - 1) * 2 + 2]
-    local limit       = tonumber(ARGV[1 + (i - 1) * 2 + 1])
-    local window_ms   = tonumber(ARGV[1 + (i - 1) * 2 + 2])
+for i = 0, (num_rules - 1) do
+    local tok_key     = KEYS[i * 2 + 1]
+    local refill_key  = KEYS[i * 2 + 2]
+    local limit       = tonumber(ARGV[i * 2 + 2])
+    local window_ms   = tonumber(ARGV[i * 2 + 3])
     local rate        = limit / window_ms
     local tokens      = tonumber(redis.call('GET', tok_key))
     local last_refill = tonumber(redis.call('GET', refill_key))
@@ -28,7 +28,7 @@ for i = 1, num_rules do
         tokens = math.min(limit, tokens + elapsed * rate)
     end
 
-    computed[i] = {
+    computed[i+1] = {
         tok_key    = tok_key,
         refill_key = refill_key,
         tokens     = tokens,
