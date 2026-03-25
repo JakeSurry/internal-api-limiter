@@ -6,10 +6,18 @@ import redis.asyncio as aioredis
 from pathlib import Path
 
 
+# ---------------------------------------------------------------------
+# Init globals
+# ---------------------------------------------------------------------
+
 @dataclass(frozen=True)
 class RateLimitRule:
+    """
+    Represent a rate limit rule
+    """
     limit: int
     window_ms: int
+
 
 
 API_RULES: dict[str, list[RateLimitRule]] = {
@@ -30,6 +38,10 @@ REDIS_SCRIPT = lua_text
 POOL: Optional[aioredis.Redis] = None
 
 
+# ---------------------------------------------------------------------
+# Setup redis pool interface
+# ---------------------------------------------------------------------
+
 def get_redis_pool() -> aioredis.Redis:
     global POOL
     if POOL is None:
@@ -47,6 +59,10 @@ async def close_redis_pool() -> None:
         POOL = None
 
 
+# ---------------------------------------------------------------------
+# Call API function
+# ---------------------------------------------------------------------
+
 async def call_api_with_rate_limit(
     api: str,
     call_api: Callable[..., Awaitable[Any]],
@@ -61,18 +77,21 @@ async def call_api_with_rate_limit(
     rules = API_RULES[api]
     r = get_redis_pool()
 
+    # Build keys for number of tokens and last refill per rule
     keys = []
     for i in range(len(rules)):
         prefix = f"ratelimit:{api}:{i}"
         keys.append(f"{prefix}:tokens")
         keys.append(f"{prefix}:last_refill")
 
+    # Build api ruleset
     rule_argv = []
     for rule in rules:
         rule_argv.extend([rule.limit, rule.window_ms])
 
     deadline = time.monotonic() + max_wait_s
 
+    # Try to make API call, keep trying if block for max_wait_s before giving up
     while True:
         now_ms = int(time.time() * 1000)
 
@@ -84,21 +103,24 @@ async def call_api_with_rate_limit(
             *rule_argv,
         ))
 
+        # Call API if tokens available
         if wait_ms == 0:
             return await call_api(*args, **kwargs)
 
+        # Fail call if tokens are missing and not block
         if not block:
             return None
 
+        # Keep trying if block for max_wait_s
         wait_s = min(wait_ms / 1000, RETRY_INTERVAL_S)
         if time.monotonic() + wait_s > deadline:
             return None
         await asyncio.sleep(wait_s)
 
 
-# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------
 # Demo - MADE BY JARVIS
-# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------
 
 async def _demo():
     async def fake_api(msg: str) -> str:
