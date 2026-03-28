@@ -39,7 +39,10 @@ API_RULES: dict[str, list[RateLimitRule]] = {
     "B": [
         RateLimitRule(limit=5, window_ms=1_000, user_ip_scope=True),
         RateLimitRule(limit=12, window_ms=1_000, user_ip_scope=False),
-    ]
+    ],
+    "C": [
+        RateLimitRule(limit=10, window_ms=5_000)
+    ],
 }
 
 # ---------------------------------------------------------------------
@@ -181,5 +184,32 @@ async def _demo_two():
 
     await close_redis_pool()
 
+
+# ---------------------------------------------------------------------
+# Demo - MADE BY ME (inspired by prev demo)
+# ---------------------------------------------------------------------
+
+async def _demo_three():
+    async def fake_api(msg: str) -> str:
+        return f"API-RESPONSE: {msg}"
+    print("--- TEST-DEMO FORROLLING WINDOW COURTESY OF ME ---\n--- Rules= limit: 10/5s ---\n")
+    print("11 rapid calls (expect 10 response 1 limited)")
+    for i in range(11):
+        result = await call_api_with_rate_limit("C", 0, fake_api, f"#{i} OK", block=False)
+        print(f"  [{i}] {result or 'RATE LIMITED'}")
+    print("Sleep 4.9 seconds")
+    await asyncio.sleep(4.9)
+    print("11 rapid calls (expect 0 response 11 limited)")
+    for i in range(11):
+        result = await call_api_with_rate_limit("C", 1, fake_api, f"#{i} OK", block=False)
+        print(f"  [{i}] {result or 'RATE LIMITED'}")
+    print("Sleep 0.1 seconds")
+    await asyncio.sleep(0.1)
+    print("11 rapid calls (expect 10 response 1 limited)")
+    for i in range(11):
+        result = await call_api_with_rate_limit("C", 2, fake_api, f"#{i} OK", block=False)
+        print(f"  [{i}] {result or 'RATE LIMITED'}")
+
+    await close_redis_pool()
 if __name__ == "__main__": 
-    asyncio.run(_demo_two())
+    asyncio.run(_demo_three())
